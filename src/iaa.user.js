@@ -111,6 +111,8 @@
     params.set('cy', String(cropRect.cy));
     params.set('cw', String(cropRect.cw));
     params.set('ch', String(cropRect.ch));
+    // Ensure crop happens on original image before resize.
+    params.set('precrop', '1');
     params.set('w', String(OUTPUT_SIZE));
     params.set('h', String(OUTPUT_SIZE));
     params.set('fit', 'cover');
@@ -194,6 +196,10 @@
         overflow: auto;
         border-radius: 8px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        background: #1b2533 !important;
+        color: #eef4ff !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        opacity: 1 !important;
         padding: 14px;
       }
 
@@ -233,11 +239,15 @@
       .iaa-url-input {
         width: 100%;
         min-height: 38px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.34);
         border-radius: 4px;
         padding: 8px 10px;
-        background: rgba(0, 0, 0, 0.15);
-        color: inherit;
+        background: #0f1722;
+        color: #eef4ff;
+      }
+
+      .iaa-url-input::placeholder {
+        color: rgba(238, 244, 255, 0.72);
       }
 
       .iaa-btn {
@@ -332,7 +342,8 @@
         min-height: 72px;
         padding: 8px;
         border-radius: 4px;
-        background: rgba(0, 0, 0, 0.15);
+        background: #111b28;
+        border: 1px solid rgba(255, 255, 255, 0.2);
         line-height: 1.5;
         font-size: 12px;
       }
@@ -340,12 +351,12 @@
       .iaa-output {
         width: 100%;
         min-height: 92px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.34);
         border-radius: 4px;
         padding: 8px;
         resize: vertical;
-        background: rgba(0, 0, 0, 0.15);
-        color: inherit;
+        background: #0f1722;
+        color: #eef4ff;
       }
 
       .iaa-actions {
@@ -456,10 +467,20 @@
       const sourceW = clamp(box / state.scale, 1, state.naturalWidth - sourceX);
       const sourceH = clamp(box / state.scale, 1, state.naturalHeight - sourceY);
 
-      const cx = Math.round(sourceX);
-      const cy = Math.round(sourceY);
-      const cw = Math.max(1, Math.round(sourceW));
-      const ch = Math.max(1, Math.round(sourceH));
+      let cx = Math.round(sourceX);
+      let cy = Math.round(sourceY);
+      let cw = Math.max(1, Math.round(sourceW));
+      let ch = Math.max(1, Math.round(sourceH));
+
+      // Keep a strict square crop so downstream resize won't re-center unexpectedly.
+      const side = Math.max(1, Math.min(cw, ch));
+      cx += Math.max(0, Math.floor((cw - side) / 2));
+      cy += Math.max(0, Math.floor((ch - side) / 2));
+      cw = side;
+      ch = side;
+
+      cx = clamp(cx, 0, Math.max(0, state.naturalWidth - cw));
+      cy = clamp(cy, 0, Math.max(0, state.naturalHeight - ch));
 
       return {
         cx,
@@ -623,7 +644,7 @@
     overlay.id = 'iaa-v010-overlay';
 
     const panel = document.createElement('div');
-    panel.className = 'iaa-panel shopItemColor mainColor';
+    panel.className = 'iaa-panel';
 
     const header = document.createElement('div');
     header.className = 'iaa-header';
@@ -753,9 +774,7 @@
     );
 
     function resolveOutputUrl() {
-      if (output.value.trim()) {
-        return output.value.trim();
-      }
+      // Always build from current drag/zoom state to avoid stale centered URLs.
       return cropController.buildOutputUrl();
     }
 
