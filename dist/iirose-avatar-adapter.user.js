@@ -44,6 +44,14 @@
     console.info(`[IAA ${IAA_VERSION}] ${text}`);
   }
 
+  function notifyLoaded() {
+    if (window.__IAA_V010_NOTIFY_DONE__) {
+      return;
+    }
+    window.__IAA_V010_NOTIFY_DONE__ = true;
+    toast('IAA 已加载：请进入头像编辑面板，在外链入口左侧点击 IAA 按钮。');
+  }
+
   function getUserRE() {
     return window.Objs && window.Objs.userREHolder ? window.Objs.userREHolder : null;
   }
@@ -140,23 +148,33 @@
     style.id = 'iaa-v010-style';
     style.textContent = `
       .iaa-open-btn {
-        width: 408px;
-        height: 58px;
-        float: left;
-        margin: 8px;
+        position: absolute;
+        right: calc(100% + 8px);
+        top: 0;
+        width: 62px;
+        height: 200px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
         border-radius: 4px;
         box-shadow: 0 0 1px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.24);
-        font-size: 16px;
-        letter-spacing: 0.3px;
+        font-size: 13px;
+        line-height: 1.2;
+        cursor: pointer;
+        z-index: 3;
       }
 
       .iaa-open-btn .iaa-open-icon {
-        font-size: 22px;
+        font-size: 20px;
         line-height: 1;
+      }
+
+      .iaa-open-btn .iaa-open-label {
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: 0.2px;
       }
 
       .iaa-overlay {
@@ -345,6 +363,13 @@
       }
 
       @media (max-width: 900px) {
+        .iaa-open-btn {
+          width: 52px;
+          height: 120px;
+          top: 40px;
+          font-size: 12px;
+        }
+
         .iaa-main {
           grid-template-columns: 1fr;
         }
@@ -826,14 +851,28 @@
       return;
     }
 
+    if (linkTile.querySelector('.iaa-open-btn')) {
+      return;
+    }
+
+    if (!linkTile.style.position) {
+      linkTile.style.position = 'relative';
+    }
+    linkTile.style.overflow = 'visible';
+
     const launchTile = document.createElement('div');
     launchTile.className = 'iaa-open-btn mainColor whoisTouch2';
-    launchTile.innerHTML = '<span class="iaa-open-icon mdi-crop"></span><span>IAA 图形裁剪 (Global)</span>';
-    launchTile.addEventListener('click', () => {
+    launchTile.innerHTML = '<span class="iaa-open-icon mdi-crop"></span><span class="iaa-open-label">IAA<br>裁剪</span>';
+    launchTile.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       openCropperModal(currentAvatarUrl());
     });
+    launchTile.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+    });
 
-    linkTile.parentElement.appendChild(launchTile);
+    linkTile.appendChild(launchTile);
   }
 
   function startWatchers() {
@@ -865,6 +904,7 @@
   function bootstrap() {
     try {
       startWatchers();
+      notifyLoaded();
       console.info(`[IAA ${IAA_VERSION}] userscript started`);
     } catch (error) {
       console.error('[IAA] bootstrap failed:', error);
